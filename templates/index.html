@@ -1,57 +1,91 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <title>YOLOv11 Detection & Segmentation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLOv11 Object Detection & Segmentation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        #result-container {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #resultImage {
+            max-width: 80%;
+            display: none;
+            border: 2px solid #000;
+            margin-top: 10px;
+        }
+        #details {
+            margin-top: 10px;
+            text-align: left;
+            max-width: 600px;
+        }
+    </style>
 </head>
+
 <body>
-    <h2>YOLOv11 Object Detection & Segmentation API</h2>
+    <h2>YOLOv11 Object Detection & Segmentation</h2>
 
     <input type="file" id="imagefile" accept="image/*">
     <button onclick="uploadImage()">Upload & Predict</button>
 
-    <div>
-        <img id="resultImage" src="" width="600" style="margin-top:20px; display: none;">
+    <div id="result-container">
+        <img id="resultImage" src="" alt="Result Image">
         <div id="details"></div>
     </div>
 
-<script>
-async function uploadImage() {
-    const formData = new FormData();
-    const imagefile = document.querySelector('#imagefile');
-    if (!imagefile.files[0]) {
-        alert("Please select an image.");
-        return;
-    }
-    formData.append("file", imagefile.files[0]);
+    <script>
+        async function uploadImage() {
+            const imagefile = document.getElementById('imagefile').files[0];
 
-    try {
-        const response = await fetch("http://3.124.205.250:8000/predict/", { 
-            method: "POST",
-            body: formData
-        });
+            if (!imagefile) {
+                alert("Please select an image before uploading.");
+                return;
+            }
 
-        const data = await response.json();
-        if (data.error) {
-            alert("Error: " + data.error);
-            return;
+            const formData = new FormData();
+            formData.append("file", imagefile);
+
+            try {
+                const response = await fetch("http://3.124.205.250:8000/predict/", {
+                    method: "POST",
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server responded with ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                console.log("Server Response:", data);  // Debugging
+
+                // Update result image
+                const resultImg = document.getElementById('resultImage');
+                resultImg.src = `http://3.124.205.250:8000/static/${data.output_image}`;
+                resultImg.style.display = "block";
+
+                // Display detection details
+                const detailsDiv = document.getElementById("details");
+                detailsDiv.innerHTML = "<h3>Detections:</h3>";
+
+                data.detections.forEach(det => {
+                    detailsDiv.innerHTML += `<p><strong>Class:</strong> ${det.class}, <strong>BBox:</strong> [${det.bbox.join(", ")}]</p>`;
+                });
+
+            } catch (error) {
+                console.error("Error:", error);
+                alert("Failed to process the image. Please try again.");
+            }
         }
-
-        document.getElementById('resultImage').src = `/static/${data.output_image}`;
-        document.getElementById('resultImage').style.display = "block";
-
-        const detailsDiv = document.getElementById("details");
-        detailsDiv.innerHTML = "";
-        window.detections = data.detections;
-
-        data.detections.forEach(det => {
-            detailsDiv.innerHTML += `<p>Class: ${det.class}, BBox: ${det.bbox}</p>`;
-        });
-    } catch (error) {
-        alert("Failed to process the image.");
-    }
-}
-</script>
-
+    </script>
 </body>
+
 </html>
