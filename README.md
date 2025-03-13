@@ -25,6 +25,9 @@ This repository demonstrates a robust implementation of real-time object detecti
   <img src="results/night_cars.jpg" alt="Input Image" width="45%">
   <img src="results/night_cars_result.jpg" alt="Output Image" width="45%">
 </p>
+<p align="center">
+  <img src="results/bikes.png" alt="Input Image" width="75%">
+</p>
 
 ---
 
