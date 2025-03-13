@@ -38,18 +38,21 @@ jobs:
     - name: Deploy to EC2
       run: |
         ssh -o StrictHostKeyChecking=no -i segmentation.pem ubuntu@${{ secrets.YOUR_EC2_PUBLIC_IP }} << 'EOF'
-          set -e  # Exit immediately if any command fails
+          set -e  # Stop execution if any command fails
           echo "🚀 Pulling latest code and redeploying..."
 
-          # Go to project directory
-          cd /home/ubuntu
+          # Navigate to project directory
+          cd /home/ubuntu/Image-Segmentation-AWS-MLOps || exit 1
 
-          # Fetch latest GitHub changes
-          git fetch --all
+          # Ensure we are on the correct branch
+          git checkout main
+
+          # Pull the latest changes **without cloning**
+          git fetch origin main
           git reset --hard origin/main
           
-          # Set correct permissions for updated files
-          chmod 644 /home/ubuntu/templates/index.html
+          # Ensure correct file permissions
+          chmod 644 /home/ubuntu/YOUR_REPO_NAME/templates/index.html
 
           # Pull the latest Docker image from AWS ECR
           aws ecr get-login-password --region eu-central-1 | sudo docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-central-1.amazonaws.com
@@ -65,10 +68,11 @@ jobs:
           # Wait for the container to start
           sleep 5
           
-          # Copy the updated index.html inside the running container
-          sudo docker cp /home/ubuntu/templates/index.html $(sudo docker ps -q):/app/templates/index.html
+          # Copy updated files inside the running container
+          sudo docker cp /home/ubuntu/YOUR_REPO_NAME/templates/index.html $(sudo docker ps -q):/app/templates/index.html
+          sudo docker cp /home/ubuntu/YOUR_REPO_NAME/app.py $(sudo docker ps -q):/app/app.py
           
-          # Restart the container to apply the changes
+          # Restart the container to apply changes
           sudo docker restart $(sudo docker ps -q)
           
           echo "✅ Deployment completed successfully!"
