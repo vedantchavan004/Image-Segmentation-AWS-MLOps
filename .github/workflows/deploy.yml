@@ -3,77 +3,55 @@ name: Deploy FastAPI YOLO to AWS
 on:
   push:
     branches:
-      - main  # Trigger deployment on changes to the main branch
+      - main
+
+env:
+  AWS_REGION: eu-central-1
+  ECR_REPOSITORY: fastapi-yolo11
+  IMAGE_TAG: latest
 
 jobs:
-  deploy:
+  build_and_deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v4
 
     - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v2
+      uses: aws-actions/configure-aws-credentials@v4
       with:
+        aws-region: ${{ secrets.AWS_REGION }}
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ secrets.AWS_REGION }}
 
     - name: Login to Amazon ECR
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build, Tag, and Push Docker Image
       run: |
-        aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-central-1.amazonaws.com
+        docker build -t ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/fastapi-yolo11:latest .
+        docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/fastapi-yolo11:latest
 
-    - name: Build & Push Docker Image
-      run: |
-        docker build -t fastapi-yolo11 .
-        docker tag fastapi-yolo11:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-central-1.amazonaws.com/fastapi-yolo11:latest
-        docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-central-1.amazonaws.com/fastapi-yolo11:latest
+    - name: SSH and Deploy on EC2
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.YOUR_EC2_PUBLIC_IP }}
+        username: ubuntu
+        key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+        script: |
+          # login to ECR
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | sudo docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
 
-    - name: Add SSH Key & Set Permissions
-      run: |
-        echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > segmentation.pem
-        chmod 600 segmentation.pem
+          # Pull the latest Docker image
+          sudo docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/fastapi-yolo11:latest
 
-    - name: Deploy to EC2
-      run: |
-        ssh -o StrictHostKeyChecking=no -i segmentation.pem ubuntu@${{ secrets.YOUR_EC2_PUBLIC_IP }} << 'EOF'
-          set -e  # Stop execution if any command fails
-          echo "🚀 Pulling latest code and redeploying..."
+          # Stop and remove previous containers
+          sudo docker stop fastapi-app || true
+          sudo docker rm fastapi-app || true
 
-          # Navigate to project directory
-          cd /home/ubuntu/Image-Segmentation-AWS-MLOps || exit 1
-
-          # Ensure we are on the correct branch
-          git checkout main
-
-          # Pull the latest changes **without cloning**
-          git fetch origin main
-          git reset --hard origin/main
-          
-          # Ensure correct file permissions
-          chmod 644 /home/ubuntu/YOUR_REPO_NAME/templates/index.html
-
-          # Pull the latest Docker image from AWS ECR
-          aws ecr get-login-password --region eu-central-1 | sudo docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-central-1.amazonaws.com
-          sudo docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-central-1.amazonaws.com/fastapi-yolo11:latest
-
-          # Stop and remove the old container
-          sudo docker stop $(sudo docker ps -q) || true
-          sudo docker rm $(sudo docker ps -aq) || true
-
-          # Run the new container
-          sudo docker run -d -p 8000:8000 --name fastapi-app ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-central-1.amazonaws.com/fastapi-yolo11:latest
-
-          # Wait for the container to start
-          sleep 5
-          
-          # Copy updated files inside the running container
-          sudo docker cp /home/ubuntu/YOUR_REPO_NAME/templates/index.html $(sudo docker ps -q):/app/templates/index.html
-          sudo docker cp /home/ubuntu/YOUR_REPO_NAME/app.py $(sudo docker ps -q):/app/app.py
-          
-          # Restart the container to apply changes
-          sudo docker restart $(sudo docker ps -q)
-          
-          echo "✅ Deployment completed successfully!"
-        EOF
+          # Start the new container with correct port mapping
+          sudo docker run -d \
+            --name fastapi-app \
+            -p 8000:8000 \
+            ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/fastapi-yolo11:latest
