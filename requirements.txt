@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+ultralytics
+numpy
+opencv-python-headless
+pillow
+python-multipart
+jinja2
+aiofiles
+
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision
+torchaudio
