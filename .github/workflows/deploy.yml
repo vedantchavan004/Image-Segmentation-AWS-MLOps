@@ -3,7 +3,7 @@ name: Deploy FastAPI YOLO to AWS
 on:
   push:
     branches:
-      - main  # Deploy only when changes are pushed to the main branch
+      - main  # Trigger deployment on changes to the main branch
 
 jobs:
   deploy:
@@ -38,24 +38,24 @@ jobs:
     - name: Deploy to EC2
       run: |
         ssh -o StrictHostKeyChecking=no -i segmentation.pem ubuntu@${{ secrets.YOUR_EC2_PUBLIC_IP }} << 'EOF'
-          set -e  # Stop execution if any command fails
-          echo "🚀 Connecting to EC2 and pulling latest changes..."
+          set -e  # Exit immediately if any command fails
+          echo "🚀 Pulling latest code and redeploying..."
 
-          # Navigate to project directory
+          # Go to project directory
           cd /home/ubuntu
 
-          # Pull latest changes from GitHub
+          # Fetch latest GitHub changes
           git fetch --all
           git reset --hard origin/main
           
-          # Set correct permissions for index.html
-          chmod 644 /home/ubuntu/index.html
+          # Set correct permissions for updated files
+          chmod 644 /home/ubuntu/templates/index.html
 
-          # Pull latest image from AWS ECR
+          # Pull the latest Docker image from AWS ECR
           aws ecr get-login-password --region eu-central-1 | sudo docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-central-1.amazonaws.com
           sudo docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-central-1.amazonaws.com/fastapi-yolo11:latest
 
-          # Stop and remove any running container
+          # Stop and remove the old container
           sudo docker stop $(sudo docker ps -q) || true
           sudo docker rm $(sudo docker ps -aq) || true
 
@@ -64,11 +64,11 @@ jobs:
 
           # Wait for the container to start
           sleep 5
-
-          # Copy updated index.html into the running container
-          sudo docker cp /home/ubuntu/index.html $(sudo docker ps -q):/app/templates/index.html
           
-          # Restart the container to apply the new files
+          # Copy the updated index.html inside the running container
+          sudo docker cp /home/ubuntu/templates/index.html $(sudo docker ps -q):/app/templates/index.html
+          
+          # Restart the container to apply the changes
           sudo docker restart $(sudo docker ps -q)
           
           echo "✅ Deployment completed successfully!"
