@@ -10,7 +10,7 @@
             font-family: Arial, sans-serif;
             text-align: center;
             margin: 20px;
-            background-color: #a2e8fd; /* Added gray background color */
+            background-color: #a2e8fd;
         }
         #result-container {
             margin-top: 20px;
@@ -20,14 +20,16 @@
         }
         #resultImage {
             max-width: 80%;
-            display: none;
             border: 2px solid #000;
-            margin-top: 10px;
+            display: none;
         }
         #details {
-            margin-top: 10px;
+            margin-top: 15px;
             text-align: left;
-            max-width: 600px;
+            max-width: 700px;
+        }
+        .detection-item:hover {
+            background-color: #ffffcc;
         }
     </style>
 </head>
@@ -56,29 +58,30 @@
             formData.append("file", imagefile);
 
             try {
-                const response = await fetch("http://3.124.205.250:8000/predict/", {
+                const response = await fetch("/predict/", {
                     method: "POST",
                     body: formData
                 });
 
                 if (!response.ok) {
-                    throw new Error(`Server responded with ${response.status} ${response.statusText}`);
+                    throw new Error(`Server error: ${response.status}`);
                 }
 
                 const data = await response.json();
-                console.log("Server Response:", data);  // Debugging
 
-                // Update result image
                 const resultImg = document.getElementById('resultImage');
-                resultImg.src = `http://3.124.205.250:8000/static/${data.output_image}`;
+                resultImg.src = `/static/${data.output_image}`;
                 resultImg.style.display = "block";
 
-                // Display detection details
                 const detailsDiv = document.getElementById("details");
                 detailsDiv.innerHTML = "<h3>Detections:</h3>";
 
-                data.detections.forEach(det => {
-                    detailsDiv.innerHTML += `<p><strong>Class:</strong> ${det.class}, <strong>BBox:</strong> [${det.bbox.join(", ")}]</p>`;
+                data.detections.forEach((det, idx) => {
+                    detailsDiv.innerHTML += `
+                        <p class="detection-item">
+                            <strong>${idx + 1}.</strong> Class: <strong>${det.class}</strong><br>
+                            BBox: [${det.bbox.map(coord => coord.toFixed(2)).join(", ")}]
+                        </p>`;
                 });
 
             } catch (error) {
