@@ -23,10 +23,6 @@ jobs:
     - name: Login to Amazon ECR
       run: |
         aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-central-1.amazonaws.com
-    
-    - name: Debug AWS_ACCOUNT_ID
-      run: |
-        echo "AWS Account ID is: ${{ secrets.AWS_ACCOUNT_ID }}"
 
     - name: Build & Push Docker Image
       run: |
