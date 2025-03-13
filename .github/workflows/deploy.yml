@@ -14,11 +14,11 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v1
+      uses: aws-actions/configure-aws-credentials@v2
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: eu-central-1
+        aws-region: ${{ secrets.AWS_REGION }}
 
     - name: Login to Amazon ECR
       run: |
@@ -30,12 +30,11 @@ jobs:
         docker tag fastapi-yolo11:latest <AWS_ACCOUNT_ID>.dkr.ecr.eu-central-1.amazonaws.com/fastapi-yolo11:latest
         docker push <AWS_ACCOUNT_ID>.dkr.ecr.eu-central-1.amazonaws.com/fastapi-yolo11:latest
 
-    - name: Connect to EC2 & Update Container
+    - name: Connect to EC2 & Deploy New Image
       run: |
-        ssh -o StrictHostKeyChecking=no -i segmentation.pem ubuntu@<YOUR_EC2_PUBLIC_IP> << 'EOF'
+        ssh -o StrictHostKeyChecking=no -i segmentation.pem ubuntu@${{ secrets.YOUR_EC2_PUBLIC_IP }} << 'EOF'
           aws ecr get-login-password --region eu-central-1 | sudo docker login --username AWS --password-stdin <AWS_ACCOUNT_ID>.dkr.ecr.eu-central-1.amazonaws.com
           sudo docker pull <AWS_ACCOUNT_ID>.dkr.ecr.eu-central-1.amazonaws.com/fastapi-yolo11:latest
           sudo docker stop $(sudo docker ps -q) || true
           sudo docker run -d -p 8000:8000 <AWS_ACCOUNT_ID>.dkr.ecr.eu-central-1.amazonaws.com/fastapi-yolo11:latest
         EOF
-
