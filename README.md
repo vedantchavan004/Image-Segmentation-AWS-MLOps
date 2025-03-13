@@ -16,7 +16,15 @@ This repository demonstrates a robust implementation of real-time object detecti
 ---
 
 ## 📸 Example Results
-*(Add your example result images here)*
+### 🖼 Input vs. Output Comparison
+<p align="center">
+  <img src="results/BerlinBikes_SeanGallupGetty_web.jpg" alt="Input Image" width="45%">
+  <img src="results/resultbikes.jpg" alt="Output Image" width="45%">
+</p>
+<p align="center">
+  <img src="results/night_cars.jpg" alt="Input Image" width="45%">
+  <img src="results/night_cars_result.jpg" alt="Output Image" width="45%">
+</p>
 
 ---
 
@@ -96,18 +104,6 @@ This project uses GitHub Actions for automatic deployment. Each push to the `mai
 
 ---
 
-## 📸 Sample Results
-
-(Add your result images here, e.g.)
-
-- Result image 1
-- Result description
-
-- Result image 2
-- Result description
-
----
-
 ## 🛠️ Tech Stack
 - **Backend:** FastAPI, Python
 - **AI Model:** YOLOv11 Segmentation (Ultralytics)
@@ -132,5 +128,4 @@ This project is licensed under the MIT License.
 - LinkedIn: [Vedant Chavan](https://www.linkedin.com/in/vedant-chavan-97ml)
 
 ⭐ **Happy coding!** 🚀
-
 
