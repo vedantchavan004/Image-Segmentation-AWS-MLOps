@@ -27,8 +27,8 @@ jobs:
     - name: Build & Push Docker Image
       run: |
         docker build -t fastapi-yolo11 .
-        docker tag fastapi-yolo11:latest <AWS_ACCOUNT_ID>.dkr.ecr.eu-central-1.amazonaws.com/fastapi-yolo11:latest
-        docker push <AWS_ACCOUNT_ID>.dkr.ecr.eu-central-1.amazonaws.com/fastapi-yolo11:latest
+        docker tag fastapi-yolo11:latest <secrets.AWS_ACCOUNT_ID>.dkr.ecr.eu-central-1.amazonaws.com/fastapi-yolo11:latest
+        docker push <secrets.AWS_ACCOUNT_ID>.dkr.ecr.eu-central-1.amazonaws.com/fastapi-yolo11:latest
     - name: Add SSH Key & Set Permissions
       run: |
         echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > segmentation.pem
