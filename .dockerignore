@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 __pycache__/
 *.pyc
 *.pyo
@@ -7,3 +8,14 @@ static/
 *.png
 *.mp4
 .DS_Store
+=======
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+static/
+*.jpg
+*.png
+*.mp4
+.DS_Store
+>>>>>>> origin/main

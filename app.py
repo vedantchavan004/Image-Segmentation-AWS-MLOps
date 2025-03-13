@@ -1,3 +1,4 @@
+
 import os
 import sys
 import cv2
@@ -84,3 +85,4 @@ async def predict(file: UploadFile = File(...)):
     except Exception as e:
         print(f"Error: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
+

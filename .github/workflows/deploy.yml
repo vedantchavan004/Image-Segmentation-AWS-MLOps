@@ -1,0 +1,75 @@
+name: Deploy FastAPI YOLO to AWS
+
+on:
+  push:
+    branches:
+      - main  # Deploy only when changes are pushed to the main branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      run: |
+        aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-central-1.amazonaws.com
+
+    - name: Build & Push Docker Image
+      run: |
+        docker build -t fastapi-yolo11 .
+        docker tag fastapi-yolo11:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-central-1.amazonaws.com/fastapi-yolo11:latest
+        docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-central-1.amazonaws.com/fastapi-yolo11:latest
+
+    - name: Add SSH Key & Set Permissions
+      run: |
+        echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > segmentation.pem
+        chmod 600 segmentation.pem
+
+    - name: Deploy to EC2
+      run: |
+        ssh -o StrictHostKeyChecking=no -i segmentation.pem ubuntu@${{ secrets.YOUR_EC2_PUBLIC_IP }} << 'EOF'
+          set -e  # Stop execution if any command fails
+          echo "🚀 Connecting to EC2 and pulling latest changes..."
+
+          # Navigate to project directory
+          cd /home/ubuntu
+
+          # Pull latest changes from GitHub
+          git fetch --all
+          git reset --hard origin/main
+          
+          # Set correct permissions for index.html
+          chmod 644 /home/ubuntu/index.html
+
+          # Pull latest image from AWS ECR
+          aws ecr get-login-password --region eu-central-1 | sudo docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-central-1.amazonaws.com
+          sudo docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-central-1.amazonaws.com/fastapi-yolo11:latest
+
+          # Stop and remove any running container
+          sudo docker stop $(sudo docker ps -q) || true
+          sudo docker rm $(sudo docker ps -aq) || true
+
+          # Run the new container
+          sudo docker run -d -p 8000:8000 --name fastapi-app ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-central-1.amazonaws.com/fastapi-yolo11:latest
+
+          # Wait for the container to start
+          sleep 5
+
+          # Copy updated index.html into the running container
+          sudo docker cp /home/ubuntu/index.html $(sudo docker ps -q):/app/templates/index.html
+          
+          # Restart the container to apply the new files
+          sudo docker restart $(sudo docker ps -q)
+          
+          echo "✅ Deployment completed successfully!"
+        EOF
